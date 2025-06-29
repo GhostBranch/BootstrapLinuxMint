@@ -2,20 +2,23 @@
 #!/bin/bash
 set -e
 
-echo "Installing shells and starship prompt..."
-sudo apt update
-sudo apt install -y bash zsh fish curl git
+if [[ $EUID -ne 0 ]]; then
+  echo "Please run as root: sudo ./bootstrap.sh"
+  exit 1
+fi
 
-echo "Setting Zsh as default shell..."
-chsh -s $(which zsh)
+echo "Starting full bootstrap..."
 
-echo "Creating symlinks for dotfiles..."
-mkdir -p ~/.config/fish
-ln -sf ~/dotfiles/bash/.bashrc ~/.bashrc
-ln -sf ~/dotfiles/zsh/.zshrc ~/.zshrc
-ln -sf ~/dotfiles/fish/config.fish ~/.config/fish/config.fish
+# Run system setup as root
+./bootstrapSystem.sh
 
-echo "Installing starship prompt..."
-curl -fsSL https://starship.rs/install.sh | bash
+# Run dotfiles setup as the original user (not root)
+if [ -z "$SUDO_USER" ]; then
+  echo "SUDO_USER is not set, running dotfiles setup as root (not recommended)."
+  ./bootstrapDotFiles.sh
+else
+  sudo -u "$SUDO_USER" bash ./bootstrapDotFiles.sh
+fi
 
-echo "Done! Please restart your terminal."
+echo "Bootstrap complete!"
+
